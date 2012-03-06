@@ -1,0 +1,11 @@
+{
+	"ignored_packages":
+	[
+		"Vintage"
+	],
+
+	// if present, use this command instead of plain "git"
+	// e.g. "/Users/kemayo/bin/git" or "C:\bin\git.exe"
+	"git_command": "/usr/local/git/bin/git",
+	"open_files_in_new_window": false
+}
