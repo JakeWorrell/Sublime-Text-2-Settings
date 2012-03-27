@@ -1,5 +1,5 @@
 """
-DocBlockr v2.6.0
+DocBlockr v2.6.2
 by Nick Fisher
 https://github.com/spadgos/sublime-jsdocs
 """
@@ -220,11 +220,13 @@ class JsdocsParser:
 
         retType = self.getFunctionReturnType(name)
         if retType is not None:
-            out.append("%s %s${1:%s}%s" % (
+            # the extra space here is so that the description will align with the param description
+            out.append("%s %s${1:%s}%s %s${2:[description]}" % (
                 self.viewSettings.get('jsdocs_return_tag') or '@return',
                 "{" if self.settings['curlyTypes'] else "",
                 retType or "[type]",
-                "}" if self.settings['curlyTypes'] else ""
+                "}" if self.settings['curlyTypes'] else "",
+                " " if args else ""
             ))
 
         return out
@@ -237,11 +239,11 @@ class JsdocsParser:
             # no return, but should add a class
             return None
 
-        if re.match('(?:set|add)[A-Z_]', name):
+        if re.match('(?:set|add)($|[A-Z_])', name):
             # setter/mutator, no return
             return None
 
-        if re.match('(?:is|has)[A-Z_]', name):  # functions starting with 'is' or 'has'
+        if re.match('(?:is|has)($|[A-Z_])', name):  # functions starting with 'is' or 'has'
             return self.settings['bool']
 
         return False
@@ -447,7 +449,7 @@ class JsdocsPHP(JsdocsParser):
 
     def getFunctionReturnType(self, name):
         if (name[:2] == '__'):
-            if name in ('__construct', '__set', '__unset', '__wakeup'):
+            if name in ('__construct', '__destruct', '__set', '__unset', '__wakeup'):
                 return None
             if name == '__sleep':
                 return 'array'

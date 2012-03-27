@@ -507,6 +507,19 @@
 				<string>#CF6A4C</string>
 			</dict>
 		</dict>
+		<dict>
+		    <key>name</key>
+		    <string>SublimeLinter Error Outline</string>
+		    <key>scope</key>
+		    <string>sublimelinter.outline.illegal</string>
+		    <key>settings</key>
+		    <dict>
+		        <key>background</key>
+		        <string>#AA2A22</string>
+		        <key>foreground</key>
+		        <string>#FFFFFF</string>
+		    </dict>
+		</dict>
 	</array>
 	<key>uuid</key>
 	<string>766026CB-703D-4610-B070-8DE07D967C5F</string>

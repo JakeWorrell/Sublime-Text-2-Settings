@@ -1,5 +1,10 @@
 # DocBlockr Extended Changelog
 
+- **v2.6.2**, *22 March 2012*
+  - PHP `__destruct` functions don't get a return value *(thanks to [Alex Whitman](https://github.com/whitman))*.
+- **v2.6.1**, *16 March 2012*
+  - Fixes bug whereby the return values of functions which are named `set` or `add`, *etc* were not being guessed correctly.
+  - `@return` tags are now given a description field *(thanks to [Nick Dowdell](https://github.com/mikulad13))*.
 - **v2.6.0**, *4 March 2012*
   - Added CoffeeScript support
 - **v2.5.0**, *11 February 2012*
