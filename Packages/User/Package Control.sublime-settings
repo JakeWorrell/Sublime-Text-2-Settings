@@ -1,16 +1,19 @@
 {
-	"auto_upgrade_last_run": 1332837984,
+	"auto_upgrade_last_run": 1333354569,
 	"installed_packages":
 	[
 		"Additional PHP Snippets",
 		"Alignment",
 		"DocBlockr",
 		"Git",
+		"Goto-CSS-Declaration",
+		"Inc-Dec-Value",
 		"LESS",
 		"Package Control",
 		"SideBarEnhancements",
 		"SublimeCodeIntel",
 		"SublimeLinter",
-		"Theme - Soda"
+		"Theme - Soda",
+		"ZenCoding"
 	]
 }
