@@ -1,9 +1,9 @@
 {
 	"color_scheme": "Packages/Color Scheme - Default/Twilight.tmTheme",
+	"detect_slow_plugins": false,
 	"ignored_packages":
 	[
 		"Vintage"
 	],
-	"open_files_in_new_window": false,
-	"detect_slow_plugins": false
+	"open_files_in_new_window": false
 }
