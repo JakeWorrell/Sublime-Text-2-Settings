@@ -8,6 +8,8 @@ from sidebar.SideBarItem import SideBarItem
 from sidebar.SideBarSelection import SideBarSelection
 from sidebar.SideBarProject import SideBarProject
 
+from send2trash import send2trash
+
 def disable_default():
 	default = sublime.packages_path()+'/Default/Side Bar.sublime-menu'
 	desired = sublime.packages_path()+'/SideBarEnhancements/disable_default/Side Bar.sublime-menu.txt'
@@ -37,24 +39,29 @@ class SideBarNewFileCommand(sublime_plugin.WindowCommand):
 		self.window.show_input_panel("File Name:", name, functools.partial(self.on_done, paths), None, None)
 
 	def on_done(self, paths, name):
-		for item in SideBarSelection(paths).getSelectedDirectoriesOrDirnames():
-			item = SideBarItem(item.join(name), False)
-			if item.exists():
-				sublime.error_message("Unable to create file, file or folder exists.")
-				self.run(paths, name)
-				return
-			else:
-				try:
-					item.create()
-					item.edit()
-				except:
-					sublime.error_message("Unable to create file:\n\n"+item.path())
+		paths = SideBarSelection(paths).getSelectedDirectoriesOrDirnames()
+		if not paths:
+			paths = SideBarProject().getDirectories()
+			if paths:
+				paths = [SideBarItem(paths[0], False)]
+		if not paths:
+			sublime.active_window().new_file()
+		else:
+			for item in paths:
+				item = SideBarItem(item.join(name), False)
+				if item.exists():
+					sublime.error_message("Unable to create file, file or folder exists.")
 					self.run(paths, name)
 					return
-		SideBarProject().refresh();
-
-	def is_enabled(self, paths = []):
-		return SideBarSelection(paths).len() > 0
+				else:
+					try:
+						item.create()
+						item.edit()
+					except:
+						sublime.error_message("Unable to create file:\n\n"+item.path())
+						self.run(paths, name)
+						return
+			SideBarProject().refresh();
 
 class SideBarNewDirectoryCommand(sublime_plugin.WindowCommand):
 	def run(self, paths = [], name = ""):
@@ -176,6 +183,8 @@ class SideBarFilesOpenWithCommand(sublime_plugin.WindowCommand):
 			if sublime.platform() == 'osx':
 				subprocess.Popen(['open', '-a', application, item.nameSystem()], cwd=item.dirnameSystem())
 			elif sublime.platform() == 'windows':
+				for k, v in os.environ.iteritems():
+					application_dir = application_dir.replace('%'+k+'%', v).replace('%'+k.lower()+'%', v)
 				subprocess.Popen([application_name, item.pathSystem()], cwd=application_dir, shell=True)
 			else:
 				subprocess.Popen([application_name, item.nameSystem()], cwd=item.dirnameSystem())
@@ -499,8 +508,8 @@ class SideBarPasteCommand(sublime_plugin.WindowCommand):
 	def confirm(self, paths, in_parent, data):
 		import functools
 		window = sublime.active_window()
-		window.show_input_panel("BUG!", '', '', None, None)
-		window.run_command('hide_panel');
+		# window.show_input_panel("BUG!", '', '', None, None)
+		# window.run_command('hide_panel');
 
 		yes = []
 		yes.append('Yes, Replace the following items:');
@@ -904,6 +913,9 @@ class SideBarDuplicateCommand(sublime_plugin.WindowCommand):
 			sublime.error_message("Unable to copy:\n\n"+old+"\n\nto\n\n"+new)
 			self.run([old], new)
 			return
+		item = SideBarItem(new, os.path.isdir(new))
+		if item.isFile():
+			item.edit();
 		SideBarProject().refresh();
 
 	def is_enabled(self, paths = []):
@@ -960,19 +972,15 @@ class SideBarMoveCommand(sublime_plugin.WindowCommand):
 
 class SideBarDeleteCommand(sublime_plugin.WindowCommand):
 	def run(self, paths = [], confirmed = 'False'):
+
 		if confirmed == 'False' and s.get('confirm_before_deleting', True):
 			self.confirm([item.path() for item in SideBarSelection(paths).getSelectedItems()], [item.pathWithoutProject() for item in SideBarSelection(paths).getSelectedItems()])
 		else:
-			import sys
 			try:
-				path = os.path.join(sublime.packages_path(), 'SideBarEnhancements')
-				if path not in sys.path:
-					sys.path.append(path)
-				import send2trash
 				for item in SideBarSelection(paths).getSelectedItemsWithoutChildItems():
 					if s.get('close_affected_buffers_when_deleting_even_if_dirty', False):
 						item.close_associated_buffers()
-					send2trash.send2trash(item.path())
+					send2trash(item.path())
 				SideBarProject().refresh();
 			except:
 				import functools
@@ -982,8 +990,8 @@ class SideBarDeleteCommand(sublime_plugin.WindowCommand):
 	def confirm(self, paths, display_paths):
 		import functools
 		window = sublime.active_window()
-		window.show_input_panel("BUG!", '', '', None, None)
-		window.run_command('hide_panel');
+		# window.show_input_panel("BUG!", '', '', None, None)
+		# window.run_command('hide_panel');
 
 		yes = []
 		yes.append('Yes, delete the selected items.');
@@ -993,7 +1001,6 @@ class SideBarDeleteCommand(sublime_plugin.WindowCommand):
 		no = []
 		no.append('No');
 		no.append('Cancel the operation.');
-
 		window.show_quick_panel([yes, no], functools.partial(self.on_confirm, paths))
 
 	def on_confirm(self, paths, result):
@@ -1026,6 +1033,9 @@ class SideBarDeleteCommand(sublime_plugin.WindowCommand):
 				os.remove(path)
 			except:
 				print "Unable to remove file:\n\n"+path
+		else:
+			print 'path is none'
+			print path
 
 	def remove_safe_dir(self, path):
 		if not SideBarSelection().isNone(path):
@@ -1078,24 +1088,54 @@ class SideBarOpenInBrowserCommand(sublime_plugin.WindowCommand):
 	def run(self, paths = [], type = False):
 		import webbrowser
 		project = SideBarProject()
-		if type == False or type == 'testing':
-			url = project.getPreference('url')
-		elif type == 'production':
-			url = project.getPreference('url_production')
-		else:
-			url = project.getPreference('url')
-		if url:
-			if url[-1:] != '/':
-				url = url+'/'
-			for item in SideBarSelection(paths).getSelectedItems():
-				if item.isUnderCurrentProject():
-					webbrowser.open_new_tab(url + item.pathRelativeFromProjectEncoded())
-				else:
+		if project.hasOpenedProject():
+			if type == False or type == 'testing':
+				url = project.getPreference('url')
+			elif type == 'production':
+				url = project.getPreference('url_production')
+			else:
+				url = project.getPreference('url')
+			if url:
+				if url[-1:] != '/':
+					url = url+'/'
+				for item in SideBarSelection(paths).getSelectedItems():
+					if item.isUnderCurrentProject():
+						webbrowser.open_new_tab(url + item.pathRelativeFromProjectEncoded())
+					else:
+						webbrowser.open_new_tab(item.uri())
+			else:
+				for item in SideBarSelection(paths).getSelectedItems():
 					webbrowser.open_new_tab(item.uri())
+				sublime.status_message('Preference "url" was not found in project file.\n"'+project.getProjectFile()+'", opening local file')
 		else:
 			for item in SideBarSelection(paths).getSelectedItems():
 				webbrowser.open_new_tab(item.uri())
-			sublime.status_message('Preference "url" was not found in project file.\n"'+project.getProjectFile()+'", opening local file')
 
 	def is_enabled(self, paths = []):
 		return SideBarSelection(paths).len() > 0
+
+class SideBarOpenInNewWindowCommand(sublime_plugin.WindowCommand):
+	def run(self, paths = []):
+		import subprocess
+		for item in SideBarSelection(paths).getSelectedDirectoriesOrDirnames():
+			if sublime.platform() == 'osx':
+				try:
+					subprocess.Popen(['subl', '.'], cwd=item.pathSystem())
+				except:
+					try:
+						subprocess.Popen(['sublime', '.'], cwd=item.pathSystem())
+					except:
+						subprocess.Popen(['/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl', '.'], cwd=item.pathSystem())
+			elif sublime.platform() == 'windows':
+				try:
+					subprocess.Popen(['subl', '.'], cwd=item.pathSystem(), shell=True)
+				except:
+					try:
+						subprocess.Popen(['sublime', '.'], cwd=item.pathSystem(), shell=True)
+					except:
+						subprocess.Popen(['sublime_text.exe', '.'], cwd=item.pathSystem(), shell=True)
+			else:
+				try:
+					subprocess.Popen(['subl', '.'], cwd=item.pathSystem())
+				except:
+					subprocess.Popen(['sublime', '.'], cwd=item.pathSystem())

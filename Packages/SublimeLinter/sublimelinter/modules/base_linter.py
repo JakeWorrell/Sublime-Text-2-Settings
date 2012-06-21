@@ -3,6 +3,7 @@
 
 import os
 import os.path
+import json
 import re
 import subprocess
 
@@ -66,6 +67,9 @@ CONFIG = {
 
 TEMPFILES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tempfiles'))
 
+JSON_MULTILINE_COMMENT_RE = re.compile(r'\/\*[\s\S]*?\*\/')
+JSON_SINGLELINE_COMMENT_RE = re.compile(r'\/\/[^\n\r]*')
+
 if not os.path.exists(TEMPFILES_DIR):
     os.mkdir(TEMPFILES_DIR)
 
@@ -82,11 +86,20 @@ class BaseLinter(object):
        If you do subclass and override __init__, be sure to call super(MyLinter, self).__init__(config).
     '''
 
+    JSC_PATH = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources/jsc'
+
+    LIB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'libs'))
+
+    JAVASCRIPT_ENGINES = ['node', 'jsc']
+    JAVASCRIPT_ENGINE_NAMES = {'node': 'node.js', 'jsc': 'JavaScriptCore'}
+    JAVASCRIPT_ENGINE_WRAPPERS_PATH = os.path.join(LIB_PATH, 'jsengines')
+
     def __init__(self, config):
         self.language = config['language']
         self.enabled = False
         self.executable = config.get('executable', None)
         self.test_existence_args = config.get('test_existence_args', ('-v',))
+        self.js_engine = None
 
         if isinstance(self.test_existence_args, basestring):
             self.test_existence_args = (self.test_existence_args,)
@@ -251,6 +264,15 @@ class BaseLinter(object):
         for start, end in results:
             self.underline_range(view, lineno, start + offset, underlines, end - start)
 
+    def underline_word(self, view, lineno, position, underlines):
+        # Assume lineno is one-based, ST2 wants zero-based line numbers
+        lineno -= 1
+        line = view.full_line(view.text_point(lineno, 0))
+        position += line.begin()
+
+        word = view.word(position)
+        underlines.append(word)
+
     def run(self, view, code, filename=None):
         self.filename = filename
 
@@ -296,3 +318,94 @@ class BaseLinter(object):
             return subprocess.Popen(args, self.get_startupinfo()).communicate()[0]
         except:
             return ''
+
+    def jsc_path(self):
+        '''Return the path to JavaScriptCore. Use this method in case the path
+           has to be dynamically calculated in the future.'''
+        return self.JSC_PATH
+
+    def find_file(self, filename, view):
+        '''Find a file with the given name, starting in the view's directory,
+           then ascending the file hierarchy up to root.'''
+        path = view.file_name()
+
+        # quit if the view is temporary
+        if not path:
+            return None
+
+        dirname = os.path.dirname(path)
+
+        while True:
+            path = os.path.join(dirname, filename)
+
+            if os.path.isfile(path):
+                with open(path, 'r') as f:
+                    return f.read()
+
+            # if we hit root, quit
+            parent = os.path.dirname(dirname)
+
+            if parent == dirname:
+                return None
+            else:
+                dirname = parent
+
+    def strip_json_comments(self, json_str):
+        stripped_json = JSON_MULTILINE_COMMENT_RE.sub('', json_str)
+        stripped_json = JSON_SINGLELINE_COMMENT_RE.sub('', stripped_json)
+        return json.dumps(json.loads(stripped_json))
+
+    def get_javascript_args(self, view, linter, code):
+        path = os.path.join(self.LIB_PATH, linter)
+        options = self.get_javascript_options(view)
+
+        if options == None:
+            options = json.dumps(view.settings().get('%s_options' % linter) or {})
+
+        self.get_javascript_engine(view)
+        engine = self.js_engine
+
+        if (engine['name'] == 'jsc'):
+            args = (engine['wrapper'], '--', path + os.path.sep, str(code.count('\n')), options)
+        else:
+            args = (engine['wrapper'], path + os.path.sep, options)
+
+        return args
+
+    def get_javascript_options(self, view):
+        '''Subclasses should override this if they want to provide options
+           for a Javascript-based linter. If the subclass cannot provide
+           options, it should return None (or not return anything).'''
+        return None
+
+    def get_javascript_engine(self, view):
+        if self.js_engine == None:
+            for engine in self.JAVASCRIPT_ENGINES:
+                if engine == 'node':
+                    try:
+                        path = self.get_mapped_executable(view, 'node')
+                        subprocess.call([path, '-v'], startupinfo=self.get_startupinfo())
+                        self.js_engine = {
+                            'name': engine,
+                            'path': path,
+                            'wrapper': os.path.join(self.JAVASCRIPT_ENGINE_WRAPPERS_PATH, engine + '.js'),
+                        }
+                        break
+                    except OSError:
+                        pass
+
+                elif engine == 'jsc':
+                    if os.path.exists(self.jsc_path()):
+                        self.js_engine = {
+                            'name': engine,
+                            'path': self.jsc_path(),
+                            'wrapper': os.path.join(self.JAVASCRIPT_ENGINE_WRAPPERS_PATH, engine + '.js'),
+                        }
+                        break
+
+        if self.js_engine != None:
+            return (True, self.js_engine['path'], 'using {0}'.format(self.JAVASCRIPT_ENGINE_NAMES[self.js_engine['name']]))
+
+        # Didn't find an engine, tell the user
+        engine_list = ', '.join(self.JAVASCRIPT_ENGINE_NAMES.values())
+        return (False, '', 'One of the following Javascript engines must be installed: ' + engine_list)

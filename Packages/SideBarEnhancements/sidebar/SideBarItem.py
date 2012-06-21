@@ -6,6 +6,11 @@ import shutil
 
 from SideBarProject import SideBarProject
 
+try:
+	import desktop
+except:
+	pass
+
 class Object():
 	pass
 
@@ -80,7 +85,7 @@ class SideBarItem:
 
 	def forCwdSystemName(self):
 		if self.isDirectory():
-			return './'
+			return '.'
 		else:
 			path = self.pathSystem()
 			branch = self.dirnameSystem()
@@ -91,20 +96,20 @@ class SideBarItem:
 		relative = SideBarItem(relativeFrom, os.path.isdir(relativeFrom))
 		path = self.pathSystem().replace(relative.pathSystem(), '', 1).replace('\\', '/')
 		if path == '':
-			return './'
+			return '.'
 		else:
-			return './'+re.sub('^/+', '', path)
+			return re.sub('^/+', '', path)
 
 	def forCwdSystemPathRelativeFromRecursive(self, relativeFrom):
 		relative = SideBarItem(relativeFrom, os.path.isdir(relativeFrom))
 		path = self.pathSystem().replace(relative.pathSystem(), '', 1).replace('\\', '/')
 		if path == '':
-			return './'
+			return '.'
 		else:
 			if self.isDirectory():
-				return './'+re.sub('^/+', '', path)+'/'
+				return re.sub('^/+', '', path)+'/'
 			else:
-				return './'+re.sub('^/+', '', path)
+				return re.sub('^/+', '', path)
 
 	def dirnameSystem(self):
 		import sys
@@ -139,11 +144,6 @@ class SideBarItem:
 			import subprocess
 			subprocess.Popen([self.nameSystem()], cwd=self.dirnameSystem(), shell=True)
 		else:
-			import sys
-			path = os.path.join(sublime.packages_path(), 'SideBarEnhancements')
-			if path not in sys.path:
-				sys.path.append(path)
-			import desktop
 			desktop.open(self.path())
 
 	def edit(self):
@@ -388,21 +388,24 @@ class SideBarItem:
 			views.reverse();
 			for view in views:
 				if path == view.file_name():
-					closed_items.append([view.file_name(), view.window(), view.window().get_view_index(view)])
+					if view.window():
+						closed_items.append([view.file_name(), view.window(), view.window().get_view_index(view)])
 					if len(window.views()) == 1:
 						window.new_file()
 					window.focus_view(view)
 					window.run_command('revert')
 					window.run_command('close')
 				elif view.file_name().find(path+'\\') == 0:
-					closed_items.append([view.file_name(), view.window(), view.window().get_view_index(view)])
+					if view.window():
+						closed_items.append([view.file_name(), view.window(), view.window().get_view_index(view)])
 					if len(window.views()) == 1:
 						window.new_file()
 					window.focus_view(view)
 					window.run_command('revert')
 					window.run_command('close')
 				elif view.file_name().find(path+'/') == 0:
-					closed_items.append([view.file_name(), view.window(), view.window().get_view_index(view)])
+					if view.window():
+						closed_items.append([view.file_name(), view.window(), view.window().get_view_index(view)])
 					if len(window.views()) == 1:
 						window.new_file()
 					window.focus_view(view)

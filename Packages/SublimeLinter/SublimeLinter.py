@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from functools import partial
 import os
 import re
 import sys
@@ -52,10 +53,14 @@ ALL_SETTINGS = [
     'sublimelinter_gutter_marks',
     'sublimelinter_wrap_find',
     'sublimelinter_popup_errors_on_save',
+    'perl_linter',
     'javascript_linter',
     'jshint_options',
+    'jslint_options',
     'gjslint_options',
     'gjslint_ignore',
+    'csslint_options',
+    'pep8',
     'pep8_ignore',
     'pyflakes_ignore',
     'pyflakes_ignore_import_*',
@@ -69,14 +74,17 @@ WHITESPACE_RE = re.compile(r'\s+')
 
 def get_delay(t, view):
     delay = 0
+
     for _t, d in DELAYS:
         if _t <= t:
             delay = d
+
     delay = delay or DELAYS[0][1]
 
     # If the user specifies a delay greater than the built in delay,
     # figure they only want to see marks when idle.
     minDelay = int(view.settings().get('sublimelinter_delay', 0) * 1000)
+
     if minDelay > delay[1]:
         erase_lint_marks(view)
 
@@ -111,19 +119,12 @@ def update_statusbar(view):
         view.erase_status('Linter')
 
 
-def background_run(linter, view, **kwargs):
-    '''run a linter on a given view if settings is set appropriately'''
-    if linter:
-        run_once(linter, view, **kwargs)
-
+def run_once(linter, view, **kwargs):
+    '''run a linter on a given view regardless of user setting'''
     if view.settings().get('sublimelinter_notes'):
         highlight_notes(view)
 
-
-def run_once(linter, view, event=None, **kwargs):
-    '''run a linter on a given view regardless of user setting'''
-    if linter == LINTERS.get('annotations', None):
-        highlight_notes(view)
+    if not linter:
         return
 
     vid = view.id()
@@ -143,7 +144,7 @@ def run_once(linter, view, event=None, **kwargs):
     end = time.time()
     TIMES[vid] = (end - start) * 1000  # Keep how long it took to lint
 
-    if event == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save'):
+    if kwargs.get('event', None) == 'on_post_save' and view.settings().get('sublimelinter_popup_errors_on_save'):
         popup_error_list(view)
 
 
@@ -249,7 +250,7 @@ def erase_lint_marks(view):
 
 def get_lint_regions(view, reverse=False, coalesce=False):
     vid = view.id()
-    underlines = UNDERLINES[vid][:]
+    underlines = UNDERLINES.get(vid, [])[:]
 
     if (coalesce):
         # Each of these regions is one character, so transform it into the character points
@@ -373,7 +374,31 @@ def highlight_notes(view):
         view.add_regions('lint-annotations', regions, 'sublimelinter.annotations', sublime.DRAW_EMPTY_AS_OVERWRITE)
 
 
-def queue_linter(linter, view, timeout, busy_timeout, preemptive=False):
+def _update_view(view, filename, **kwargs):
+    # It is possible that by the time the queue is run,
+    # the original file is no longer being displayed in the view,
+    # or the view may be gone. This happens especially when
+    # viewing files temporarily by single-clicking on a filename
+    # in the sidebar or when selecting a file through the choose file palette.
+    valid_view = False
+    view_id = view.id()
+
+    for window in sublime.windows():
+        for v in window.views():
+            if v.id() == view_id:
+                valid_view = True
+                break
+
+    if not valid_view or view.is_loading() or view.file_name() != filename:
+        return
+
+    try:
+        run_once(select_linter(view), view, **kwargs)
+    except RuntimeError, ex:
+        print ex
+
+
+def queue_linter(linter, view, timeout=-1, preemptive=False, event=None):
     '''Put the current view in a queue to be examined by a linter'''
     if linter is None:
         erase_lint_marks(view)  # may have changed file type and left marks behind
@@ -382,29 +407,32 @@ def queue_linter(linter, view, timeout, busy_timeout, preemptive=False):
         if not view.settings().get('sublimelinter_notes'):
             return
 
-    # user annotations could be present in all types of files
-    def _update_view(view):
-        linter = select_linter(view)
-        try:
-            background_run(linter, view)
-        except RuntimeError, ex:
-            print ex
+    if preemptive:
+        timeout = busy_timeout = 0
+    elif timeout == -1:
+        timeout, busy_timeout = get_delay(TIMES.get(view.id(), 100), view)
+    else:
+        busy_timeout = timeout
 
-    queue(view, _update_view, timeout, busy_timeout, preemptive)
+    kwargs = {'timeout': timeout, 'busy_timeout': busy_timeout, 'preemptive': preemptive, 'event': event}
+    queue(view, partial(_update_view, view, view.file_name(), **kwargs), kwargs)
+
+
+def _callback(view, filename, kwargs):
+    kwargs['callback'](view, filename, **kwargs)
 
 
 def background_linter():
     __lock_.acquire()
+
     try:
-        views = QUEUE.values()
+        callbacks = QUEUE.values()
         QUEUE.clear()
     finally:
         __lock_.release()
 
-    for view, callback, args, kwargs in views:
-        def _callback():
-            callback(view, *args, **kwargs)
-        sublime.set_timeout(_callback, 0)
+    for callback in callbacks:
+        sublime.set_timeout(callback, 0)
 
 ################################################################################
 # Queue dispatcher system:
@@ -429,18 +457,22 @@ def queue_loop():
         queue_dispatcher()
 
 
-def queue(view, callback, timeout, busy_timeout=None, preemptive=False, args=[], kwargs={}):
+def queue(view, callback, kwargs):
     global __signaled_, __signaled_first_
     now = time.time()
     __lock_.acquire()
 
     try:
-        QUEUE[view.id()] = (view, callback, args, kwargs)
+        QUEUE[view.id()] = callback
+        timeout = kwargs['timeout']
+        busy_timeout = kwargs['busy_timeout']
+
         if now < __signaled_ + timeout * 4:
             timeout = busy_timeout or timeout
 
         __signaled_ = now
-        _delay_queue(timeout, preemptive)
+        _delay_queue(timeout, kwargs['preemptive'])
+
         if not __signaled_first_:
             __signaled_first_ = __signaled_
             #print 'first',
@@ -476,6 +508,7 @@ def _delay_queue(timeout, preemptive):
             if time.time() < __signaled_:
                 return
             __semaphore_.release()
+
         sublime.set_timeout(_signal, timeout)
 
 
@@ -555,7 +588,7 @@ def lint_views(linter):
                 viewsToLint.append(view)
 
     for view in viewsToLint:
-        queue_linter(linter, view, 0, 0, True)
+        queue_linter(linter, view, preemptive=True)
 
 
 def reload_view_module(view):
@@ -616,6 +649,8 @@ class LintCommand(sublime_plugin.TextCommand):
             self.on()
         elif lc_action == 'load-save':
             self.enable_load_save()
+        elif lc_action == 'save-only':
+            self.enable_save_only()
         elif lc_action == 'off':
             self.off()
         elif action.lower() in LINTERS:
@@ -629,11 +664,16 @@ class LintCommand(sublime_plugin.TextCommand):
     def on(self):
         '''Turns background linting on.'''
         self.view.settings().set('sublimelinter', True)
-        queue_linter(select_linter(self.view), self.view, 0, 0, True)
+        queue_linter(select_linter(self.view), self.view, preemptive=True)
 
     def enable_load_save(self):
         '''Turns load-save linting on.'''
         self.view.settings().set('sublimelinter', 'load-save')
+        erase_lint_marks(self.view)
+
+    def enable_save_only(self):
+        '''Turns save-only linting on.'''
+        self.view.settings().set('sublimelinter', 'save-only')
         erase_lint_marks(self.view)
 
     def off(self):
@@ -674,24 +714,22 @@ class BackgroundLinter(sublime_plugin.EventListener):
         # Reset the last selected line number so that the current line will show error messages
         # when update_statusbar is called.
         self.lastSelectedLineNo = -1
-        delay = get_delay(TIMES.get(view.id(), 100), view)
-        queue_linter(linter, view, *delay)
+        queue_linter(linter, view)
 
     def on_load(self, view):
         reload_settings(view)
 
-        if view.is_scratch() or view.settings().get('sublimelinter') == False:
+        if view.is_scratch() or view.settings().get('sublimelinter') == False or view.settings().get('sublimelinter') == 'save-only':
             return
 
-        background_run(select_linter(view), view, event='on_load')
+        queue_linter(select_linter(view), view, event='on_load')
 
     def on_post_save(self, view):
         if view.is_scratch() or view.settings().get('sublimelinter') == False:
             return
 
         reload_view_module(view)
-        linter = select_linter(view)
-        background_run(linter, view, event='on_post_save')
+        queue_linter(select_linter(view), view, preemptive=True, event='on_post_save')
 
     def on_selection_modified(self, view):
         if view.is_scratch():
@@ -713,6 +751,12 @@ class FindLintErrorCommand(sublime_plugin.TextCommand):
         return select_linter(self.view) is not None
 
     def find_lint_error(self, forward):
+        linter = select_linter(self.view, ignore_disabled=True)
+
+        if not linter:
+            return
+
+        self.view.run_command('lint', linter.language)
         regions = get_lint_regions(self.view, reverse=not forward, coalesce=True)
 
         if len(regions) == 0:
@@ -879,6 +923,19 @@ class SublimelinterEnableLoadSaveCommand(SublimelinterCommand):
         return enabled
 
 
+class SublimelinterEnableSaveOnlyCommand(SublimelinterCommand):
+    def is_enabled(self):
+        enabled = super(SublimelinterEnableSaveOnlyCommand, self).is_enabled()
+
+        if enabled:
+            view = self.window.active_view()
+
+            if view and view.settings().get('sublimelinter') == 'save-only':
+                return False
+
+        return enabled
+
+
 class SublimelinterDisableCommand(SublimelinterCommand):
     def is_enabled(self):
         enabled = super(SublimelinterDisableCommand, self).is_enabled()
@@ -886,7 +943,7 @@ class SublimelinterDisableCommand(SublimelinterCommand):
         if enabled:
             view = self.window.active_view()
 
-            if view and not view.settings().get('sublimelinter') == True:
+            if view and view.settings().get('sublimelinter') == False:
                 return False
 
         return enabled
