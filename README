@@ -1,0 +1,7 @@
+to use go to your user app support folder for sublime 2. eg:
+  /Users/jake/Library/Application Support/Sublime Text 2
+Cast the following cli spells:
+  git init
+  git remote add origin https://github.com/JakeWorrell/Sublime-Text-2-Settings.git
+  git pull origin master
+  git reset --hard HEAD
