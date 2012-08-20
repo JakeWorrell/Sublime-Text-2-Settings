@@ -23,20 +23,21 @@ Download the latest version from the [tags page][tags]. Unzip to your Sublime Te
 You can leave either of these things [here][issues].
 
 ## Changelog ##
-- **v2.6.5**, *19 June 2012*
-  - Bugfix for adding linebreaks when not at the start or end of a line
-- **v2.6.4**, *4 June 2012*
-  - Better support for indentation using tabs
-  - YUI tags are supported by the autocomplete
-  - When only whitespace exists on a docblock line, and `trim_automatic_white_space` is set to true, the whitespace is removed.
-  - Better support for comment blocks opened with `/*`
-- **v2.6.3**, *30 April 2012*
-  - Fixes the join-lines command <kbd>Ctrl+J</kbd> for CoffeeScript.
-- **v2.6.2**, *22 March 2012*
-  - PHP `__destruct` functions don't get a return value *(thanks to [Alex Whitman](https://github.com/whitman))*.
-- **v2.6.1**, *16 March 2012*
-  - Fixes bug whereby the return values of functions which are named `set` or `add`, *etc* were not being guessed correctly.
-  - `@return` tags are now given a description field *(thanks to [Nick Dowdell](https://github.com/mikulad13))*.
+
+- **v2.7.4**, *8 August 2012*
+  - Fix for Actionscript docblocks not working
+- **v2.7.3**, *7 August 2012*
+  - No trailing whitespace added on the spacer lines added when `jsdocs_spacer_between_sections` is on (thanks to [Rafał Chłodnicki](https://github.com/rchl))
+  - Fixes a bug with detecting variable names when they have a default value in PHP
+  - Changes the notation map to not ignore the leading `$` or `_`, meaning that (for example), you could specify that variables starting with `$` are `HTMLElement`s.
+- **v2.7.2**, *6 August 2012*
+  - Small bug fix, thanks to [djuliusl](https://github.com/djuliusl)
+- **v2.7.1**, *5 August 2012*
+  - Adds per-section alignment (can be set using `jsdocs_per_section_indent`)
+  - Description field for `@return` tag can be disabled using `jsdocs_return_description`. *(Both thanks to [Drarok](https://github.com/Drarok))*
+- **v2.7.0**, *5 August 2012*
+  - Adds support for ASDocs (Actionscript)
+  - Changes Linux shortcut for reparsing a comment block to <kbd>Alt+Shift+Tab</kbd>
 
 Older history can be found in [the history file](https://github.com/spadgos/sublime-jsdocs/blob/master/HISTORY.md).
 
@@ -46,7 +47,7 @@ Older history can be found in [the history file](https://github.com/spadgos/subl
 
 ### Docblock completion ###
 
-Pressing **enter** or **tab** after `/**` (or `#***` for Coffee-Script) will yield a new line and will close the comment.
+Pressing **enter** or **tab** after `/**` (or `###*` for Coffee-Script) will yield a new line and will close the comment.
 
     /**<<enter>>
 

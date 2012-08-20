@@ -1,5 +1,19 @@
 # DocBlockr Extended Changelog
 
+- **v2.7.4**, *8 August 2012*
+  - Fix for Actionscript docblocks not working
+- **v2.7.3**, *7 August 2012*
+  - No trailing whitespace added on the spacer lines added when `jsdocs_spacer_between_sections` is on (thanks to [Rafał Chłodnicki](https://github.com/rchl))
+  - Fixes a bug with detecting variable names when they have a default value in PHP
+  - Changes the notation map to not ignore the leading `$` or `_`, meaning that (for example), you could specify that variables starting with `$` are `HTMLElement`s.
+- **v2.7.2**, *6 August 2012*
+  - Small bug fix, thanks to [djuliusl](https://github.com/djuliusl)
+- **v2.7.1**, *5 August 2012*
+  - Adds per-section alignment (can be set using `jsdocs_per_section_indent`)
+  - Description field for `@return` tag can be disabled using `jsdocs_return_description`. *(Both thanks to [Drarok](https://github.com/Drarok))* 
+- **v2.7.0**, *5 August 2012*
+  - Adds support for ASDocs (Actionscript)
+  - Changes Linux shortcut for reparsing a comment block to <kbd>Alt+Shift+Tab</kbd>
 - **v2.6.5**, *19 June 2012*
   - Bugfix for adding linebreaks when not at the start or end of a line
 - **v2.6.4**, *4 June 2012*

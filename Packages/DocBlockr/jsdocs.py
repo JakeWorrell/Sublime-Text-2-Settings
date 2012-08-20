@@ -1,5 +1,5 @@
 """
-DocBlockr v2.6.3
+DocBlockr v2.7.4
 by Nick Fisher
 https://github.com/spadgos/sublime-jsdocs
 """
@@ -51,6 +51,8 @@ def getParser(view):
         return JsdocsPHP(viewSettings)
     elif re.search("source\\.coffee", scope):
         return JsdocsCoffee(viewSettings)
+    elif re.search("source\\.actionscript", scope):
+        return JsdocsActionscript(viewSettings)
 
     return JsdocsJavascript(viewSettings)
 
@@ -63,8 +65,8 @@ class JsdocsCommand(sublime_plugin.TextCommand):
         settings = v.settings()
         point = v.sel()[0].end()
 
-        indentSpaces = max(0, settings.get("jsdocs_indentation_spaces", 1))
-        prefix = "*" + (" " * indentSpaces)
+        indentSpaces = " " * max(0, settings.get("jsdocs_indentation_spaces", 1))
+        prefix = "*"
 
         alignTags = settings.get("jsdocs_align_tags", 'deep')
         deepAlignTags = alignTags == 'deep'
@@ -96,8 +98,15 @@ class JsdocsCommand(sublime_plugin.TextCommand):
             maxCols = 0
             # this is a 2d list of the widths per column per line
             widths = []
+
+            # Skip the return tag if we're faking "per-section" indenting.
+            lastItem = len(out)
+            if (settings.get('jsdocs_per_section_indent')):
+                if (settings.get('jsdocs_return_tag') in out[-1]):
+                    lastItem -= 1
+
             #  skip the first one, since that's always the "description" line
-            for line in out[1:]:
+            for line in out[1:lastItem]:
                 widths.append(map(outputWidth, line.split(" ")))
                 maxCols = max(maxCols, len(widths[-1]))
 
@@ -112,12 +121,15 @@ class JsdocsCommand(sublime_plugin.TextCommand):
                     if (i < len(width)):
                         maxWidths[i] = max(maxWidths[i], width[i])
 
+            # Convert to a dict so we can use .get()
+            maxWidths = dict(enumerate(maxWidths))
+
             for index, line in enumerate(out):
                 if (index > 0):
                     newOut = []
                     for partIndex, part in enumerate(line.split(" ")):
                         newOut.append(part)
-                        newOut.append(" " + (" " * (maxWidths[partIndex] - outputWidth(part))))
+                        newOut.append(" " + (" " * (maxWidths.get(partIndex, 0) - outputWidth(part))))
                     out[index] = "".join(newOut).strip()
 
         # fix all the tab stops so they're consecutive
@@ -136,7 +148,7 @@ class JsdocsCommand(sublime_plugin.TextCommand):
             else:
                 write(v, " $0 */")
         else:
-            snippet = "\n " + prefix
+            snippet = ""
             closer = parser.settings['commentCloser']
             if out:
                 if settings.get('jsdocs_spacer_between_sections'):
@@ -146,9 +158,10 @@ class JsdocsCommand(sublime_plugin.TextCommand):
                         if res and (lastTag != res.group(1)):
                             lastTag = res.group(1)
                             out.insert(idx, "")
-                snippet += ("\n " + prefix).join(out)
+                for line in out:
+                    snippet += "\n " + prefix + (indentSpaces + line if line else "")
             else:
-                snippet += "$0"
+                snippet += "\n " + prefix + indentSpaces + "$0"
 
             snippet += "\n" + closer
             write(v, snippet)
@@ -164,7 +177,7 @@ class JsdocsParser:
         return re.search('^\\s*\\*', line)
 
     def parse(self, line):
-        out = self.parseFunction(line)  # (name, args)
+        out = self.parseFunction(line)  # (name, args, options)
         if (out):
             return self.formatFunction(*out)
 
@@ -199,8 +212,11 @@ class JsdocsParser:
 
         return out
 
-    def formatFunction(self, name, args):
+    def formatFunction(self, name, args, options={}):
         out = []
+        if 'as_setter' in options:
+            out.append('@private')
+            return out
 
         out.append("${1:[%s description]}" % (name))
 
@@ -211,23 +227,41 @@ class JsdocsParser:
             # remove comments inside the argument list.
             args = re.sub("/\*.*?\*/", '', args)
             for arg in self.parseArgs(args):
-                out.append("@param %s${1:%s}%s %s ${1:[description]}" % (
-                    "{" if self.settings['curlyTypes'] else "",
-                    escape(arg[0] or self.guessTypeFromName(arg[1]) or "[type]"),
-                    "}" if self.settings['curlyTypes'] else "",
+                typeInfo = ''
+                if self.settings['typeInfo']:
+                    typeInfo = '%s${1:%s}%s ' % (
+                        "{" if self.settings['curlyTypes'] else "",
+                        escape(arg[0] or self.guessTypeFromName(arg[1]) or "[type]"),
+                        "}" if self.settings['curlyTypes'] else "",
+                    )
+                out.append("@param %s%s ${1:[description]}" % (
+                    typeInfo,
                     escape(arg[1])
                 ))
 
         retType = self.getFunctionReturnType(name)
         if retType is not None:
-            # the extra space here is so that the description will align with the param description
-            out.append("%s %s${1:%s}%s %s${2:[description]}" % (
+            typeInfo = ''
+            if self.settings['typeInfo']:
+                typeInfo = ' %s${1:%s}%s' % (
+                    "{" if self.settings['curlyTypes'] else "",
+                    retType or "[type]",
+                    "}" if self.settings['curlyTypes'] else ""
+                )
+            format_args = [
                 self.viewSettings.get('jsdocs_return_tag') or '@return',
-                "{" if self.settings['curlyTypes'] else "",
-                retType or "[type]",
-                "}" if self.settings['curlyTypes'] else "",
-                " " if args else ""
-            ))
+                typeInfo
+            ]
+
+            if (self.viewSettings.get('jsdocs_return_description')):
+                format_str = "%s%s %s${1:[description]}"
+
+                # the extra space here is so that the description will align with the param description
+                format_args.append(" " if (args and not self.viewSettings.get('jsdocs_per_section_indent')) else "")
+            else:
+                format_str = "%s%s"
+
+            out.append(format_str % tuple(format_args))
 
         return out
 
@@ -268,11 +302,9 @@ class JsdocsParser:
             out.extend(extraTags)
 
     def guessTypeFromName(self, name):
-        name = re.sub("^[$_]", "", name)
         hungarian_map = self.viewSettings.get('jsdocs_notation_map', [])
         if len(hungarian_map):
             for rule in hungarian_map:
-                print rule
                 matched = False
                 if 'prefix' in rule:
                     matched = re.match(rule['prefix'] + "[A-Z_]", name)
@@ -297,6 +329,7 @@ class JsdocsJavascript(JsdocsParser):
         self.settings = {
             # curly brackets around the type information
             "curlyTypes": True,
+            'typeInfo': True,
             "typeTag": "type",
             # technically, they can contain all sorts of unicode, but w/e
             "varIdentifier": '[a-zA-Z_$][a-zA-Z_$0-9]*',
@@ -369,6 +402,7 @@ class JsdocsPHP(JsdocsParser):
         self.settings = {
             # curly brackets around the type information
             'curlyTypes': False,
+            'typeInfo': True,
             'typeTag': "var",
             'varIdentifier': '[$]' + nameToken + '(?:->' + nameToken + ')*',
             'fnIdentifier': nameToken,
@@ -407,7 +441,7 @@ class JsdocsPHP(JsdocsParser):
             return None
 
     def getArgName(self, arg):
-        return re.search("(\\S+)(?:\\s*=.*)?$", arg).group(1)
+        return re.search("(" + self.settings['varIdentifier'] + ")(?:\\s*=.*)?$", arg).group(1)
 
     def parseVar(self, line):
         res = re.search(
@@ -466,6 +500,7 @@ class JsdocsCoffee(JsdocsParser):
             # curly brackets around the type information
             'curlyTypes': True,
             'typeTag': "type",
+            'typeInfo': True,
             # technically, they can contain all sorts of unicode, but w/e
             'varIdentifier': '[a-zA-Z_$][a-zA-Z_$0-9]*',
             'fnIdentifier': '[a-zA-Z_$][a-zA-Z_$0-9]*',
@@ -475,15 +510,12 @@ class JsdocsCoffee(JsdocsParser):
         }
 
     def parseFunction(self, line):
-        print line
-        print '(?:(?P<name>' + self.settings['varIdentifier'] + ')\s*[:=]\s*)?\\((?P<args>[^()]*?)\\)?\\s*([=-]>)'
         res = re.search(
             #   fnName = function,  fnName : function
             '(?:(?P<name>' + self.settings['varIdentifier'] + ')\s*[:=]\s*)?'
             + '(?:\\((?P<args>[^()]*?)\\))?\\s*([=-]>)',
             line
         )
-        print res
         if not res:
             return None
 
@@ -526,6 +558,57 @@ class JsdocsCoffee(JsdocsParser):
         if val[:4] == 'new ':
             res = re.search('new (' + self.settings['fnIdentifier'] + ')', val)
             return res and res.group(1) or None
+        return None
+
+
+class JsdocsActionscript(JsdocsParser):
+
+    def setupSettings(self):
+        nameToken = '[a-zA-Z_][a-zA-Z0-9_]*'
+        self.settings = {
+            'typeInfo': False,
+            'curlyTypes': False,
+            'typeTag': '',
+            'commentCloser': ' */',
+            'fnIdentifier': nameToken,
+            'varIdentifier': '(%s)(?::%s)?' % (nameToken, nameToken),
+            'bool': 'bool',
+            'function': 'function'
+        }
+
+    def parseFunction(self, line):
+        res = re.search(
+            #   fnName = function,  fnName : function
+            '(?:(?P<name1>' + self.settings['varIdentifier'] + ')\s*[:=]\s*)?'
+            + 'function(?:\s+(?P<getset>[gs]et))?'
+            # function fnName
+            + '(?:\s+(?P<name2>' + self.settings['fnIdentifier'] + '))?'
+            # (arg1, arg2)
+            + '\s*\((?P<args>.*)\)',
+            line
+        )
+        if not res:
+            return None
+
+        name = res.group('name1') and re.sub(self.settings['varIdentifier'], r'\1', res.group('name1')) \
+            or res.group('name2') \
+            or ''
+
+        args = res.group('args')
+        options = {}
+        if res.group('getset') == 'set':
+            options['as_setter'] = True
+
+        return (name, args, options)
+
+    def parseVar(self, line):
+        return None
+
+    def getArgName(self, arg):
+        return re.sub(self.settings['varIdentifier'] + r'(\s*=.*)?', r'\1', arg)
+
+    def getArgType(self, arg):
+        # could actually figure it out easily, but it's not important for the documentation
         return None
 
 

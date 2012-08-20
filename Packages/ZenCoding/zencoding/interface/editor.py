@@ -256,7 +256,6 @@ class ZenEditor():
         text = re.sub(utils.get_caret_placeholder(), get_ix, text)
 
         if selection:
-            # The last placeholder will contain the selected text, if any
-            text = re.sub('\$(%s)' % _ix[0], r'${\1:$SELECTION}', text)
+            text = re.sub(r'\$\{(%s)\}' % _ix[0], r'${\1:$SELECTION}', text)
 
         return text

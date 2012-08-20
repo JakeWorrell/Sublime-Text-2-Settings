@@ -6,9 +6,9 @@ import re
 from base_linter import BaseLinter
 
 CONFIG = {
-    'language': 'php',
+    'language': 'PHP',
     'executable': 'php',
-    'lint_args': ('-l', '-d display_errors=On', '-d log_errors=Off')
+    'lint_args': ['-l', '-d display_errors=On', '-d log_errors=Off']
 }
 
 

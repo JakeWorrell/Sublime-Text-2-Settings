@@ -279,6 +279,8 @@ class ZenListener(sublime_plugin.EventListener):
     def css_property_values(self, view, prefix, pos):
         prefix = css_prefixer(view, pos)
         prop   = find_css_property(view, pos)
+        print `prop`
+
         # These `values` are sourced from all the fully specified zen abbrevs
         # `d:n` => `display:none` so `display:n{tab}` will yield `none`
         values = css_property_values.get(prop)
@@ -332,8 +334,8 @@ class ZenListener(sublime_plugin.EventListener):
         for sub_selector, handler in COMPLETIONS:
             h_name = handler.__name__
             if h_name in black_list: continue
-            if view.match_selector(pos,  sub_selector):
-
+            if ( view.match_selector(pos,  sub_selector) or
+                 view.match_selector(pos -1,  sub_selector )):
                 c = h_name, prefix
                 oq_debug('handler: %r prefix: %r' % c)
                 oq_debug('pos: %r scope: %r' % (pos, view.syntax_name(pos)))
@@ -344,7 +346,7 @@ class ZenListener(sublime_plugin.EventListener):
                     if h_name == 'css_selectors':
                         return completions
                     else:
-                        return (completions, NO_BUF | NO_PLUG)
+                        return completions#, # NO_BUF | NO_PLUG)
 
 
         do_zen_expansion = True
@@ -372,7 +374,7 @@ class ZenListener(sublime_plugin.EventListener):
 
                              [(abbr, result, result)],
                              # 0,
-                             NO_BUF| NO_PLUG
+                             NO_BUF #| NO_PLUG
                         )
 
             except ZenInvalidAbbreviation:
@@ -402,7 +404,8 @@ class ZenListener(sublime_plugin.EventListener):
             oq_debug('css_property exact: %r prefix: %r properties: %r' % (
                       bool(exacts), prefix, properties ))
 
-            return [ (prefix, v, '%s:$1;' %  v) for v in properties ]
+            return ([ (prefix, v +'\t'+'zen:css_properties', '%s:$1;' %  v) for v in properties ],
+                     NO_BUF)
         else:
             return []
 
