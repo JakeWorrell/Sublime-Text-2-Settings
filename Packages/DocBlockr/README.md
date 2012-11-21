@@ -1,10 +1,10 @@
-DocBlockr is a [Sublime Text 2][sublime] package which makes writing [JSDoc comments][jsdoc] and [PHPDoc comments][phpdoc] a breeze.
+DocBlockr is a [Sublime Text 2][sublime] package which makes writing documentation a breeze. DocBlockr supports **Javascript**, **PHP**, **ActionScript**, **CoffeeScript**, **Java**, **Objective C**, **C** and **C++**.
 
 ## Installation ##
 
 ### With Package Control ###
 
-If you have the [Package Control][package_control] package installed, you can install DocBlockr from inside Sublime Text itself. Open the Command Palette and select "Package Control: Install Package", then search for DocBlockr and you're done!
+**Recommended install**. If you have the [Package Control][package_control] package installed, you can install DocBlockr from inside Sublime Text itself. Open the Command Palette and select "Package Control: Install Package", then search for DocBlockr and you're done!
 
 ### Without Package Control ###
 
@@ -20,24 +20,28 @@ Download the latest version from the [tags page][tags]. Unzip to your Sublime Te
 
 ## Feature requests & bug reports ##
 
-You can leave either of these things [here][issues].
+You can leave either of these things [here][issues]. Pull requests are welcomed heartily! In this repo, the main development branch is `develop` and the stable 'production' branch is `master`. Please remember to base your branch from `develop` and issue the pull request back to that branch.
 
 ## Changelog ##
-
-- **v2.7.4**, *8 August 2012*
-  - Fix for Actionscript docblocks not working
-- **v2.7.3**, *7 August 2012*
-  - No trailing whitespace added on the spacer lines added when `jsdocs_spacer_between_sections` is on (thanks to [Rafał Chłodnicki](https://github.com/rchl))
-  - Fixes a bug with detecting variable names when they have a default value in PHP
-  - Changes the notation map to not ignore the leading `$` or `_`, meaning that (for example), you could specify that variables starting with `$` are `HTMLElement`s.
-- **v2.7.2**, *6 August 2012*
-  - Small bug fix, thanks to [djuliusl](https://github.com/djuliusl)
-- **v2.7.1**, *5 August 2012*
-  - Adds per-section alignment (can be set using `jsdocs_per_section_indent`)
-  - Description field for `@return` tag can be disabled using `jsdocs_return_description`. *(Both thanks to [Drarok](https://github.com/Drarok))*
-- **v2.7.0**, *5 August 2012*
-  - Adds support for ASDocs (Actionscript)
-  - Changes Linux shortcut for reparsing a comment block to <kbd>Alt+Shift+Tab</kbd>
+- **v2.9.1**, *31 October 2012*
+  - Thanks to [wronex](https://github.com/wronex), <kbd>Alt+Q</kbd> will reformat the entire DocBlock, with customisable indentation.
+  - Thanks to [Pavel Voronin](https://github.com/pavel-voronin), spaces around arguments are handled properly.
+  - **C/C++**: Array arguments are accepted
+  - **C/C++**: An argument list containing only `void` doesn't output any `@param` tags
+  - **PHP**: Arguments with an array as a default value inside multi-line arguments are handled properly
+  - <kbd>Ctrl/Cmd + Enter</kbd> and <kbd>Ctrl/Cmd + Shift + Enter</kbd> work inside DocBlocks.
+- **v2.9.0**, *1 October 2012*
+  - Adds ObjectiveC and ObjectiveC++ support, thanks to some help from [Robb Böhnke](https://github.com/robb)
+    - Very buggy code, support isn't great but it's better than nothing (hopefully).
+  - Single-line comments inside function definitions are handled
+  - Notation rules are applied to functions, which means they can define a return type by their name, eg: `strFoo`
+  - Notation rules can define arbitrary tags, for example: functions with a prefix of "_" should get the `@private` tag.
+  - Given the above addition, JS functions starting with an underscore are no longer marked as `@private` by default.
+- **v2.8.2**, *28 September 2012*
+  - When a function is defined across many lines, the parser will find the arguments on extra lines.
+- **v2.8.1**, *13 September 2012*
+  - Pressing <kbd>tab</kbd> on an empty line will perform a deep indentation instead of moving to the next field
+  - Functions starting with `_` will get a `@private` tag in Javascript (thanks to [Andrew Hanna](https://github.com/percyhanna))
 
 Older history can be found in [the history file](https://github.com/spadgos/sublime-jsdocs/blob/master/HISTORY.md).
 
@@ -96,6 +100,30 @@ However, if the line directly afterwards contains a function definition, then it
 
 You can then press `tab` to move between the different fields.
 
+If you have many arguments, or long variable names, it might be useful to spread your arguments across multiple lines. DocBlockr will handle this situation too:
+
+    /**<<enter>>
+    function someLongFunctionName(
+            withArguments, across,
+            many, lines
+        ) {
+
+    -- becomes --
+
+    /**
+     * [someLongFunctionName description]
+     * @param  {[type]} withArguments [description]
+     * @param  {[type]} across        [description]
+     * @param  {[type]} many          [description]
+     * @param  {[type]} lines         [description]
+     * @return {[type]}               [description]
+     */
+    function someLongFunctionName(
+            withArguments, across,
+            many, lines
+        ) {
+
+
 In PHP, if [type hinting][typehinting] or default values are used, then those types are prefilled as the datatypes.
 
     /**|<<enter>>
@@ -117,11 +145,14 @@ DocBlockr will try to make an intelligent guess about the return value of the fu
 - If the function name is or begins with "set" or "add", then no `@return` is inserted.
 - If the function name is or begins with "is" or "has", then it is assumed to return a `Boolean`.
 - In Javascript, if the function begins with an uppercase letter then it is assumed that the function is a class definition. No `@return` tag is added.
+- In Javascript, functions beginning with an underscore are assumed to be private: `@private` is added to these.
 - In PHP, some of the [magic methods][magicmethods] have their values prefilled:
   - `__construct`, `__destruct`, `__set`, `__unset`, `__wakeup` have no `@return` tag.
   - `__sleep` returns an `Array`.
   - `__toString` returns a `string`.
   - `__isset` returns a `bool`.
+
+In Javascript, functions beginning with an underscore are given a `@private` tag by default.
 
 ### Variable documentation ###
 
@@ -161,6 +192,15 @@ DocBlockr will also try to determine the type of the variable from its name. Var
             "type": "TableRow"      // you can add your own types
         }
     ]
+}
+```
+
+The notation map can also be used to add arbitrary tags, according to your own code conventions. For example, if your conventions state that functions beginning with an underscore are private, you could add this to the `jsdocs_notation_map`:
+
+```javascript
+{
+    "prefix": "_",
+    "tags": ["@private"]
 }
 ```
 
@@ -235,8 +275,22 @@ If you write a double-slash comment and then press `Ctrl+Enter`, DocBlockr will 
 
 Sometimes, you'll perform some action which clears the fields (sections of text which you can navigate through using `tab`). This leaves you with a number of placeholders in the DocBlock with no easy way to jump to them.
 
-With DocBlockr, you can reparse a comment and reactivate the fields by pressing the hotkey `Ctrl+Alt+Tab`.
+With DocBlockr, you can reparse a comment and reactivate the fields by pressing the hotkey `Ctrl+Alt+Tab` (`Alt+Shift+Tab` on Linux).
+
+### Reformatting paragraphs ###
+
+Inside a comment block, hit `Alt+Q` to wrap the lines to make them fit within your rulers. If you would like subsequent lines in a paragraph to be indented, you can adjust the `jsdocs_indentation_spaces_same_para` setting. For example, a value of `3` might look like this:
     
+    /**
+     * Duis sed arcu non tellus eleifend ullamcorper quis non erat. Curabitur
+     *   metus elit, ultrices et tristique a, blandit at justo.
+     * @param  {String} foo Lorem ipsum dolor sit amet.
+     * @param  {Number} bar Nullam fringilla feugiat pretium. Quisque
+     *   consectetur, risus eu pellentesque tincidunt, nulla ipsum imperdiet
+     *   massa, sit amet adipiscing dolor.
+     * @return {[Type]}
+     */
+
 ### Adding extra tags ###
 
 Finally, typing `@` inside a docblock will show a completion list for all tags supported by [JSDoc][jsdoc], the [Google Closure Compiler][closure], [YUIDoc][yui] or [PHPDoc][phpdoc]. Extra help is provided for each of these tags by prefilling the arguments each expects. Pressing `tab` will move the cursor to the next argument.
@@ -302,6 +356,8 @@ You can access the configuration settings by selecting `Preferences -> Package S
 
 - `jsdocs_spacer_between_sections` *(Boolean)* If true, then extra blank lines are inserted between the sections of the docblock. Default: `false`.
 
+- `jsdocs_indentation_spaces_same_para` *(Number)* Described above in the *Reformatting paragraphs* section. Default: `1`
+
 This is my first package for Sublime Text, and the first time I've written any Python, so I heartily welcome feedback and [feature requests or bug reports][issues].
 
 ## Show your love ##
@@ -315,7 +371,6 @@ This is my first package for Sublime Text, and the first time I've written any P
 [package_control]: http://wbond.net/sublime_packages/package_control
 [phpdoc]: http://phpdoc.org/
 [sublime]: http://www.sublimetext.com/
-[svenax]: https://github.com/svenax
 [tags]: https://github.com/spadgos/sublime-jsdocs/tags
 [typehinting]: http://php.net/manual/en/language.oop5.typehinting.php
 [yui]: http://yui.github.com/yuidoc/syntax/index.html

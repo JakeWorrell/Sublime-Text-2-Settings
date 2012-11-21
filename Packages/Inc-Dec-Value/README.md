@@ -1,9 +1,19 @@
 #Inc-Dec-Value
 
-**v0.1.2**
+**v0.1.7** - [#19](https://github.com/rmaksim/Sublime-Text-2-Inc-Dec-Value/issues/19) Swapping the color notation in CSS
+
+**v0.1.6** - [#20](https://github.com/rmaksim/Sublime-Text-2-Inc-Dec-Value/issues/20) (upper, lower, capitalize) works on non-ascii strings
+
+**v0.1.5** - [#15](https://github.com/rmaksim/Sublime-Text-2-Inc-Dec-Value/issues/15) Don't place action in undo history when nothing happens
+
+**v0.1.4** - [#14](https://github.com/rmaksim/Sublime-Text-2-Inc-Dec-Value/pull/14) Saving the position of the cursors/selections on the change
+
+**v0.1.3** - added support for the mouse wheel
 
 ---
 ## increase / decrease of numbers (integer and fractional), dates, hex color values, opposite relations or cycled enumerations on the configured value and a bonus - string actions (upper, lower, capitalize)
+
+Instead of the arrows can use your mouse wheel.
 
 **Forum Thread**
 http://www.sublimetext.com/forum/viewtopic.php?f=5&t=2395
@@ -46,9 +56,25 @@ http://www.sublimetext.com/forum/viewtopic.php?f=5&t=2395
     If the cursor between the '#' and the hex number in the #f01
     the action applies to first character 'f'
 
-    Pressing the key `super+up/down` increases/decreases
+    Pressing the key `super+up/down`(Linux) or `super+alt+up/down`(Windows & OSX)
+    increases/decreases
     the total value of the hex color on +111/-111 or +111111/-111111
     (regardless of the settings)
+
+    Pressing the key `super+alt+up/down`(Linux) or `super+ctrl+up/down`(Windows) or `super+alt+ctrl+up/down`(OSX)
+    swapping the color notation in CSS:
+
+    from:
+
+        color: rgba(0,17,34,0.4);
+
+    to:
+
+        color: #012; /* alpha: 0.4 */
+
+    again:
+
+        color: rgba(0,17,34,0.4);
 
 
   * **dates in ISO format `YYYY-MM-DD`**
@@ -70,7 +96,7 @@ http://www.sublimetext.com/forum/viewtopic.php?f=5&t=2395
 
     => `truE > false, tRUe > false, FaLsE > true, LeFT > right`
 
-    Pressing the key `super+alt+up/down`
+    Pressing the key `super+alt+up/down`(Linux) or `super+ctrl+up/down`(Windows) or `super+alt+ctrl+up/down`(OSX)
     changes the value under the cursor ("true" or "false") to the opposite
 
     Version 0.1.0 adds the ability to cycle more than two values:
@@ -87,9 +113,9 @@ http://www.sublimetext.com/forum/viewtopic.php?f=5&t=2395
 
     Pressing the key `alt+up` makes the first letter in the word in Uppercase (Capitalize) without affecting the remaining characters.
 
-    Pressing the key `super+up` makes the word in UPPERCASE.
+    Pressing the key `super+up`(Linux) or `super+alt+up`(Windows & OSX) makes the word in UPPERCASE.
 
-    Pressing the key `alt+down` or `super+down` makes the word in lowercase.
+    Pressing the key `alt+down` or `super+down`(Linux) or `super+alt+down`(Windows & OSX) makes the word in lowercase.
 
     **Important !**
     There will be no change of words, which were applied different rules.

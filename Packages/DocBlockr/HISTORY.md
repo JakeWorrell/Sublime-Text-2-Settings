@@ -1,5 +1,28 @@
 # DocBlockr Extended Changelog
 
+- **v2.9.1**, *31 October 2012*
+  - Thanks to [wronex](https://github.com/wronex), <kbd>Alt+Q</kbd> will reformat the entire DocBlock, with customisable indentation.
+  - Thanks to [Pavel Voronin](https://github.com/pavel-voronin), spaces around arguments are handled properly.
+  - **C/C++**: Array arguments are accepted
+  - **C/C++**: An argument list containing only `void` doesn't output any `@param` tags
+  - **PHP**: Arguments with an array as a default value inside multi-line arguments are handled properly
+  - <kbd>Ctrl/Cmd + Enter</kbd> and <kbd>Ctrl/Cmd + Shift + Enter</kbd> work inside DocBlocks.
+- **v2.9.0**, *1 October 2012*
+  - Adds ObjectiveC and ObjectiveC++ support, thanks to some help from [Robb Böhnke](https://github.com/robb)
+    - Very buggy code, support isn't great but it's better than nothing (hopefully).
+  - Single-line comments inside function definitions are handled
+  - Notation rules are applied to functions, which means they can define a return type by their name, eg: `strFoo`
+  - Notation rules can define arbitrary tags, for example: functions with a prefix of "_" should get the `@private` tag.
+  - Given the above addition, JS functions starting with an underscore are no longer marked as `@private` by default.
+- **v2.8.2**, *28 September 2012*
+  - When a function is defined across many lines, the parser will find the arguments on extra lines.
+- **v2.8.1**, *13 September 2012*
+  - Pressing <kbd>tab</kbd> on an empty line will perform a deep indentation instead of moving to the next field
+  - Functions starting with `_` will get a `@private` tag in Javascript (thanks to [Andrew Hanna](https://github.com/percyhanna))
+- **v2.8.0**, *26 August 2012*
+  - New feature: <kbd>Alt+Q</kbd> to reformat the description field of a docblock to make it fit nicely within your ruler.
+  - Adds support for C++ (thanks to [Rafał Chłodnicki](https://github.com/rchl))
+  - Indenting to the description field works in languages which don't require type information in the docblock.
 - **v2.7.4**, *8 August 2012*
   - Fix for Actionscript docblocks not working
 - **v2.7.3**, *7 August 2012*

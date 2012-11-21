@@ -1,5 +1,5 @@
 {
-	"auto_upgrade_last_run": 1345375049,
+	"auto_upgrade_last_run": 1353440348,
 	"installed_packages":
 	[
 		"Additional PHP Snippets",
@@ -12,7 +12,6 @@
 		"SideBarEnhancements",
 		"SublimeCodeIntel",
 		"SublimeLinter",
-		"Theme - Soda",
-		"ZenCoding"
+		"Theme - Soda"
 	]
 }
