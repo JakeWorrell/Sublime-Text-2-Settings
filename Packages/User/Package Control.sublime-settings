@@ -1,9 +1,10 @@
 {
-	"auto_upgrade_last_run": 1353440348,
+	"auto_upgrade_last_run": 1353604272,
 	"installed_packages":
 	[
 		"Additional PHP Snippets",
 		"Alignment",
+		"CoffeeScript",
 		"DocBlockr",
 		"Git",
 		"Inc-Dec-Value",
