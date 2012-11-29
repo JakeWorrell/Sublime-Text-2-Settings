@@ -1,11 +1,12 @@
 {
-	"auto_upgrade_last_run": 1353604272,
+	"auto_upgrade_last_run": null,
 	"installed_packages":
 	[
 		"Additional PHP Snippets",
 		"Alignment",
 		"CoffeeScript",
 		"DocBlockr",
+		"Emmet",
 		"Git",
 		"Inc-Dec-Value",
 		"LESS",
