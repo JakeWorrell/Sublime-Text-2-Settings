@@ -4,6 +4,7 @@
 	[
 		"Additional PHP Snippets",
 		"Alignment",
+		"Auto Semi-Colon",
 		"CoffeeScript",
 		"DocBlockr",
 		"Emmet",
@@ -11,6 +12,8 @@
 		"Inc-Dec-Value",
 		"LESS",
 		"Package Control",
+		"PHP-Twig",
+		"Phpcs",
 		"SideBarEnhancements",
 		"SublimeCodeIntel",
 		"SublimeLinter",

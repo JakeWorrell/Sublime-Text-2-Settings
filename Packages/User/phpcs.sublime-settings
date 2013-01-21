@@ -1,0 +1,12 @@
+{
+  "phpcs_php_prefix_path": "/usr/local/bin/php",
+  "phpcs_executable_path": "/usr/local/opt/php-code-sniffer/scripts/phpcs",
+  "phpcs_additional_args": {
+    "--standard": "PSR2"
+  },
+  "phpcs_commands_to_php_prefix": ["Fixer"],
+
+  "phpmd_executable_path": "/usr/local/opt/php-md/libexec/phpmd.phar",
+
+  "php_cs_fixer_executable_path": "/usr/local/opt/php-cs-fixer/libexec/php-cs-fixer.phar"
+}
